@@ -15,12 +15,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 WEBSOCKET_URL = "ws://localhost:8010/ws"
+WEBSOCKET_TOKEN = None
+FORCE_LOGIN = True
+USER_NICKNAME = "" # 与Bot对话的用户（你）的昵称
 
 route_config = RouteConfig(
     route_config={
         "wx": TargetConfig(
             url=WEBSOCKET_URL,
-            token=None,
+            token=WEBSOCKET_TOKEN,
         )
     }
 )
@@ -49,13 +52,13 @@ bot = WeChatBot()
 
 @bot.on_message
 async def handle(msg):
-    print(f"[{msg.type}] {msg.user_id}: {msg.text}")
+    logger.debug(f"[{msg.type}] {msg.user_id}: {msg.text}")
 
     base_message_info = BaseMessageInfo(
         platform="wx",
         message_id=msg.raw.get("message_id"),
         time=msg.timestamp.timestamp(),
-        user_info=UserInfo("wx", msg.user_id, msg.user_id),
+        user_info=UserInfo("wx", msg.user_id, USER_NICKNAME),
         group_info=None,
         template_info=None,
         format_info=format_info,
@@ -67,9 +70,10 @@ async def handle(msg):
                 data=msg.text,
         )
     elif msg.type == "image":
+        image = await bot.download(msg)
         submit_seg = Seg(
                 type="image",
-                data=base64.b64encode(bot.download(msg).data)
+                data=base64.b64encode(image.data).decode()
         )
 
     msg_send = MessageBase(
@@ -81,6 +85,7 @@ async def handle(msg):
 
     await router.send_message(msg_send)
 
-    logger.info("发送成功")
+    logger.info("发送至 MaiBot 成功")
 
+asyncio.run(bot.login(force=FORCE_LOGIN))
 bot.run()
