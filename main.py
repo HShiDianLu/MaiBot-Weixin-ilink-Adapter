@@ -5,6 +5,7 @@ from maim_message import *
 import logging
 import base64
 import time
+import random
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,10 +15,18 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# WebSocket 配置
 WEBSOCKET_URL = "ws://localhost:8010/ws"
 WEBSOCKET_TOKEN = None
-FORCE_LOGIN = True
-USER_NICKNAME = "" # 与Bot对话的用户（你）的昵称
+
+# 每次运行强制扫码
+FORCE_LOGIN = False
+
+# 与Bot对话的用户（你）的昵称，ilink api获取不到真实的用户名，必填项
+USER_NICKNAME = ""
+
+# 模拟打字
+SIMULATE_TYPING = True
 
 route_config = RouteConfig(
     route_config={
@@ -31,7 +40,12 @@ route_config = RouteConfig(
 async def handle(msg):
     logger.info(msg)
     try:
-        await bot.send(msg['message_info']['user_info']['user_id'], msg['message_segment']['data'])
+        text = msg['message_segment']['data']
+        user_id = msg['message_info']['user_info']['user_id']
+        if SIMULATE_TYPING:
+            await bot.send_typing(user_id)
+            time.sleep(len(text) * 0.1 + random.randint(0, len(text)) * 0.05)
+        await bot.send(user_id, text)
     except Exception as e:
         logger.error(f"发送消息失败: {e}")
     pass
@@ -44,7 +58,8 @@ router_thread.start()
 
 format_info = FormatInfo(
             content_format=["text", "image", "emoji", "voice"],
-            accept_format=["text","image","emoji","reply","voice","command","voiceurl","music","videourl","file","imageurl","forward","video",],
+            accept_format=["text", "image", "emoji", "reply", "voice", "command", "voiceurl", "music", 
+                           "videourl", "file", "imageurl", "forward", "video",],
         ) 
 
 bot = WeChatBot()
